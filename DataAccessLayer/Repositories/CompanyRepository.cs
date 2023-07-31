@@ -1,30 +1,36 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using DataAccessLayer.Model.Interfaces;
 using DataAccessLayer.Model.Models;
+//using Microsoft.Extensions.Logging;
+using Serilog;
 
 namespace DataAccessLayer.Repositories
 {
     public class CompanyRepository : ICompanyRepository
     {
 	    private readonly IDbWrapper<Company> _companyDbWrapper;
-
-	    public CompanyRepository(IDbWrapper<Company> companyDbWrapper)
+        private readonly ILogger _logger;
+        public CompanyRepository(IDbWrapper<Company> companyDbWrapper, ILogger logger)
 	    {
 		    _companyDbWrapper = companyDbWrapper;
+            _logger = logger;
         }
 
-        public IEnumerable<Company> GetAll()
+        public async Task<IEnumerable<Company>> GetAll()
         {
-            return _companyDbWrapper.FindAll();
+            return await _companyDbWrapper.FindAllAsync();
         }
 
-        public Company GetByCode(string companyCode)
+        public async Task<Company> GetByCode(string companyCode)
         {
-            return _companyDbWrapper.Find(t => t.CompanyCode.Equals(companyCode))?.FirstOrDefault();
+            var list = await _companyDbWrapper.FindAsync(t => t.CompanyCode.Equals(companyCode));
+
+            return list?.FirstOrDefault();
         }
 
-        public bool SaveCompany(Company company)
+        public async Task<bool> SaveCompanyAsync(Company company)
         {
             var itemRepo = _companyDbWrapper.Find(t =>
                 t.SiteId.Equals(company.SiteId) && t.CompanyCode.Equals(company.CompanyCode))?.FirstOrDefault();
@@ -40,10 +46,40 @@ namespace DataAccessLayer.Repositories
                 itemRepo.PhoneNumber = company.PhoneNumber;
                 itemRepo.PostalZipCode = company.PostalZipCode;
                 itemRepo.LastModified = company.LastModified;
-                return _companyDbWrapper.Update(itemRepo);
+                _logger.Information($"Updating an existing company with company code: {company}");
+                return await _companyDbWrapper.UpdateAsync(itemRepo);
             }
+            _logger.Information($"Inserting a new company with company code: {company}");
+            return await _companyDbWrapper.InsertAsync(company);
+        }
 
-            return _companyDbWrapper.Insert(company);
+        public async Task<bool> UpdateCompanyAsync(string companyCode, Company company)
+        {
+            var companyDB = await GetByCode(companyCode);
+            if(companyDB == null)
+            {
+                throw new System.Exception("Couldn't find company");
+            }
+            companyDB.CompanyCode = companyCode;
+            companyDB.CompanyName = company.CompanyName;
+            companyDB.AddressLine1 = company.AddressLine1;
+            companyDB.AddressLine2 = company.AddressLine2;
+            companyDB.AddressLine3 = company.AddressLine3;
+            companyDB.Country = company.Country;
+            companyDB.EquipmentCompanyCode = company.EquipmentCompanyCode;
+            companyDB.FaxNumber = company.FaxNumber;
+            companyDB.PhoneNumber = company.PhoneNumber;
+            companyDB.PostalZipCode = company.PostalZipCode;
+            companyDB.LastModified = company.LastModified;
+
+            _logger.Information($"Updating an existing company with company code: {companyCode}");
+            return await _companyDbWrapper.UpdateAsync(companyDB);
+        }
+
+        public async Task<bool> DeleteCompanyAsync(string companyCode)
+        {
+            _logger.Information($"Deleting an existing company with company code: {companyCode}");
+            return await _companyDbWrapper.DeleteAsync(x => x.CompanyCode == companyCode);
         }
     }
 }

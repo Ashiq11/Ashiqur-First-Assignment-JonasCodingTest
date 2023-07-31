@@ -9,8 +9,10 @@ namespace DataAccessLayer.Model.Interfaces
 {
     public interface ICompanyRepository
     {
-        IEnumerable<Company> GetAll();
-        Company GetByCode(string companyCode);
-        bool SaveCompany(Company company);
+        Task<IEnumerable<Company>> GetAll();
+        Task<Company> GetByCode(string companyCode);
+        Task<bool> SaveCompanyAsync(Company company);
+        Task<bool> UpdateCompanyAsync(string companyCode, Company company);
+        Task<bool> DeleteCompanyAsync(string companyCode);
     }
 }
